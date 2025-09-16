@@ -1,3 +1,8 @@
+import os
+import tomllib
+import platform
+
+
 class Constant:
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -16,7 +21,13 @@ BCP_47_LANGS_LIST = ['af-ZA', 'am-ET', 'ar-SA', 'az-AZ', 'be-BY', 'bg-BG', 'bn-I
 
 BCP_47_LANGS = Constant(**{lang.split('-')[1]: lang for lang in BCP_47_LANGS_LIST})
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+CONFIG = tomllib.load(open(os.path.join(BASE_DIR, 'config.toml'), 'rb'))
+
+PLATFORM = platform.system()
 
 if __name__ == '__main__':
     print(BCP_47_LANGS.search('CN'))
-
+    print(BASE_DIR)
+    print(CONFIG)
