@@ -1,6 +1,8 @@
+import os
 import httpx
 import random
 from core.model import ProxyRaw, ProxyProtocolEnum, Proxy
+from core.constant import BASE_DIR
 
 
 def generate_32bit_integer() -> int:
@@ -39,6 +41,9 @@ def get_proxy_info(proxy_raw: ProxyRaw) -> Proxy | None:
     except Exception as e:
         print(e)
         return  None
+
+def get_full_path(_path: str) -> str:
+    return os.path.join(BASE_DIR, _path)
 
 
 if __name__ == '__main__':
