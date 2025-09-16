@@ -21,8 +21,15 @@ class BrowserOperation:
     def run_browser(self, proxy_info: Proxy):
         result = None
         port = 9222
+        if PLATFORM == "Linux":
+            exe_path = CONFIG["browser"]["browser_path_linux_test"]
+        elif PLATFORM == "Windows":
+            exe_path = CONFIG["browser"]["browser_path_windows_test"]
+        else:
+            exe_path = CONFIG["browser"]["browser_path"]
+
         cmd_list= [
-            CONFIG["browser"]["browser_path_windows_test"],
+            exe_path,
             f"--remote-debugging-port={port}",
         ]
         # 设置浏览器的语言
