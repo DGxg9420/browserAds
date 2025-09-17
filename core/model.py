@@ -7,6 +7,7 @@ class ProxyProtocolEnum(Enum):
     HTTP = "http"
     HTTPS = "https"
     SOCKS5 = "socks5"
+    SOCKS5H = "socks5h"
     SOCKS4 = "socks4"
 
 
