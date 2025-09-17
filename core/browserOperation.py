@@ -37,7 +37,10 @@ class BrowserBase(ABC):
             f"--remote-debugging-port={port}",
         ]
         # 设置浏览器的语言
-        lang_str = BCP_47_LANGS.search(proxy_info.country)
+        try:
+            lang_str = BCP_47_LANGS.search(proxy_info.country)
+        except AttributeError:
+            lang_str = "en-US"
         cmd_list.append(f"--lang={lang_str}")
         # 设置浏览器接受的语言
         cmd_list.append(f"--accept-lang={lang_str}")
