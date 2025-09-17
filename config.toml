@@ -2,3 +2,6 @@
 browser_path = "/root/ungoogled-chromium-139.0.7258.154-1-x86_64_linux/chrome"
 browser_path_linux_test = "/root/ungoogled-chromium-139.0.7258.154-1-x86_64_linux/chrome"
 browser_path_windows_test = "E:\\fingerprintbrowser\\ungoogled-chromium_139.0.7258.154-1.1_windows_x64\\chrome.exe"
+
+[proxy]
+proxy_get_url = "http://list.rola.vip:8088/user_get_ip_list?token=Xn3cSaBqy0EtfUQL1730967320022&type=datacenter&qty=1&time=10&country=&format=txt&protocol=socks5&filter=1"
