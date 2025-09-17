@@ -60,6 +60,10 @@ class BrowserBase(ABC):
         cmd_list.append("--blink-settings=imagesEnabled=false")
         # 忽略证书错误
         # cmd_list.append("--ignore-certificate-errors")
+        # 默认情况下，https页面不允许从http链接引用javascript / css / plug - ins。添加这一参数会放行这些内容。
+        cmd_list.append("--allow-running-insecure-content")
+        # 单进程模式
+        cmd_list.append("--single-process")
         if PLATFORM == "Linux":
             # 无沙盒模式
             cmd_list.append("--no-sandbox")
