@@ -57,7 +57,7 @@ def filter_proxy() -> list[Proxy] | None:
                 print(proxy_info)
                 proxy_infos.append(proxy_info)
     print('测试通过代理数量：', len(proxy_infos))
-    with open("proxy_infos_filter.json", "w") as f:
+    with open("proxy_infos_filter.json", "w", encoding="utf-8") as f:
         for proxy_info in proxy_infos:
             f.write(proxy_info.model_dump_json() + "\n")
 
