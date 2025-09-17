@@ -100,9 +100,7 @@ if __name__ == '__main__':
         results = []
         for proxy_info_ in proxy_infos:
             results.append(executor.submit(run_browser_operation, result_queue, run_state, blog_url, proxy_info_))
-        #  启动计数线程
-        executor.submit(count_success_count, result_queue, run_state)
+         # 启动计数线程
+        # executor.submit(count_success_count, result_queue, run_state)
         results_end = [result.result() for result in results]
-        run_state["state"] = False
-
-
+        print(f"运行结束，成功次数：{results_end.count(True)}")
