@@ -1,16 +1,139 @@
 from DrissionPage import ChromiumOptions, Chromium
 from DrissionPage.errors import ElementNotFoundError
 from core.constant import BCP_47_LANGS, CONFIG, PLATFORM
-from core.utils import generate_32bit_integer, get_proxy_info, get_full_path
+from core.utils import generate_32bit_integer, get_proxy_info, get_full_path, find_available_port
 from core.model import Proxy, ProxyRaw, ProxyProtocolEnum
+from abc import ABC, abstractmethod
 from time import sleep
 import subprocess
+import shutil
+import os
 
+
+class BrowserBase(ABC):
+    def __init__(self, proxy_info: Proxy, play_url: str):
+        self.play_url: str = play_url
+        self.browser_pid: int = 0
+        self.browser_port: int = 0
+        self.data_path: str = ""
+        # 启动浏览器
+        self.run_browser(proxy_info=proxy_info)
+        self.browser: Chromium = Chromium(f"127.0.0.1:{self.browser_port}")
+        self.tab = self.browser.latest_tab
+
+    def run_browser(self, proxy_info: Proxy):
+        result = None
+        port = find_available_port(8001, 59600)
+        print(f"使用端口：{port}")
+        if PLATFORM == "Linux":
+            exe_path = CONFIG["browser"]["browser_path_linux_test"]
+        elif PLATFORM == "Windows":
+            exe_path = CONFIG["browser"]["browser_path_windows_test"]
+        else:
+            exe_path = CONFIG["browser"]["browser_path"]
+
+        cmd_list= [
+            exe_path,
+            f"--remote-debugging-port={port}",
+        ]
+        # 设置浏览器的语言
+        lang_str = BCP_47_LANGS.search(proxy_info.country)
+        cmd_list.append(f"--lang={lang_str}")
+        # 设置浏览器接受的语言
+        cmd_list.append(f"--accept-lang={lang_str}")
+        # 设置时区
+        cmd_list.append(f"--timezone={proxy_info.timezone}")
+        # 设置代理
+        print(proxy_info.proxy_url)
+        cmd_list.append(f"--proxy-server={proxy_info.proxy_url}")
+        #  指定指纹种子(seed)
+        seed = str(generate_32bit_integer())
+        cmd_list.append(f"--fingerprint={seed}")
+        # 设置允许自动播放
+        cmd_list.append("--autoplay-policy=no-user-gesture-required")
+        # 设置数据文件夹
+        data_path =  get_full_path(os.path.join("browserDatas", seed))
+        cmd_list.append("--user-data-dir=" + data_path)
+        # 设置静音
+        cmd_list.append("--mute-audio")
+        # 不加载图片
+        cmd_list.append("--blink-settings=imagesEnabled=false")
+        # 忽略证书错误
+        # cmd_list.append("--ignore-certificate-errors")
+        if PLATFORM == "Linux":
+            # 无沙盒模式
+            cmd_list.append("--no-sandbox")
+            # 禁用GPU
+            cmd_list.append("--disable-gpu")
+            # 无头模式
+        cmd_list.append("--headless")
+
+        try:
+            result = subprocess.Popen(
+                cmd_list,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+            self.browser_pid = result.pid
+            self.browser_port = port
+            self.data_path = data_path
+            sleep(3)
+        except subprocess.CalledProcessError as e:
+            print(f"命令执行失败！返回码: {e.returncode}")
+            print("错误信息:", e.stderr)
+            if result:
+                result.kill()
+
+    @abstractmethod
+    def startBrowserAds(self) -> bool:
+        """
+        开始浏览广告逻辑，并返回是否浏览成功
+        :return:  返回布尔值
+        """
+        pass
+
+    def browserClose(self):
+        """
+        关闭浏览器
+        """
+        self.browser.quit(del_data=True)
+        sleep(3)
+        if self.data_path and os.path.exists(self.data_path):
+            try:
+                shutil.rmtree(self.data_path)
+            except Exception as e:
+                print(f"删除数据文件夹失败：{e!r}")
+
+
+class BrowserOperationOnWebtraficRu(BrowserBase):
+    """
+    广告网站：https://webtrafic.ru/
+    """
+    name = "webtrafic.ru"
+    def startBrowserAds(self) -> bool:
+        try:
+            self.tab.get(self.play_url, timeout=60)
+            try:
+                new_tab = self.tab.ele("#:webtraf").ele("tag:img").click.for_new_tab(by_js=True, timeout=15)
+                new_tab.wait.doc_loaded(timeout=60, raise_err=False)
+                print(f"访问广告页成功：{new_tab.title}")
+            except ElementNotFoundError:
+                pass
+
+
+            return True
+        except Exception as e:
+            print(f"startBrowserAds Error: {e!r}")
+            return False
 
 
 class BrowserOperation:
-    def __init__(self, proxy_info: Proxy, play_url: str):
-        self.play_url = play_url
+    def __init__(self, proxy_info: Proxy, play_url: str, refer_url: str):
+        self.play_url: str = play_url
+        self.refer_url: str = refer_url
         self.browser_pid: int = 0
         self.browser_port: int = 0
         # 启动浏览器
@@ -48,7 +171,11 @@ class BrowserOperation:
         # 设置允许自动播放
         cmd_list.append("--autoplay-policy=no-user-gesture-required")
         # 设置数据文件夹
-        cmd_list.append(get_full_path(f"browserDatas/{seed}"))
+        cmd_list.append("--user-data-dir=" + get_full_path(os.path.join("browserDatas", seed)))
+        # 设置静音
+        cmd_list.append("--mute-audio")
+        # 不加载图片
+        cmd_list.append("--blink-settings=imagesEnabled=false")
         if PLATFORM == "Linux":
             # 无沙盒模式
             cmd_list.append("--no-sandbox")
@@ -112,7 +239,10 @@ class BrowserOperation:
 
     def play_video(self):
         try:
+            self.tab.get(self.refer_url)
+            print(self.tab.title)
             self.tab.get(self.play_url)
+            print(self.tab.user_agent)
             wait_result = self.tab.wait.ele_displayed("@aria-label=Play", raise_err=False)
             if wait_result:
                 self.tab.ele("@aria-label=Play").click()
@@ -134,9 +264,10 @@ class BrowserOperation:
                 if timeout_total % 10 == 0:
                     print(f"剩余时间: {timeout_total}s")
                 try:
-                    self.tab.ele("text:This video file cannot be played")
-                    print("视频播放失败！")
-                    break
+                    result = self.tab.ele("text:This video file cannot be played").states.is_displayed
+                    if result:
+                        print("视频播放失败！")
+                        break
                 except ElementNotFoundError:
                     pass
             print("播放结束！")
