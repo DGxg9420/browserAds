@@ -160,6 +160,11 @@ class BrowserOperationOnWebtraficRu(BrowserBase):
                 logger.info(f"访问广告页成功：{new_tab.title}")
             except ElementNotFoundError:
                 pass
+            except RuntimeError as e:
+                if "没有等到新标签页" in str(e):
+                    logger.warning("没有等到新标签页, 访问广告页失败")
+                else:
+                    raise e
 
             return True
         except Exception as e:
