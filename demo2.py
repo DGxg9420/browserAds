@@ -1,5 +1,6 @@
 from  core.utils import get_proxy_info
 from core.browserOperation import BrowserOperationOnWebtraficRu
+from core.constant import PLATFORM
 from core.utils import get_proxy_raw_by_api
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
@@ -47,9 +48,14 @@ if __name__ == '__main__':
     run_state: dict[str, bool] = {"state": True}
     result_queue: Queue[bool] = Queue()
     blog_url = "https://ssson966.blogspot.com/2025/09/linuxerror-while-loading-shared.html"
-    with ThreadPoolExecutor(max_workers=21) as executor:
-        for i in range(20):
+    if PLATFORM == "Windows":
+        thread_num = 20
+    else:
+        thread_num = 10
+    browser_count = 10000
+    with ThreadPoolExecutor(max_workers=thread_num + 1) as executor:
+        for i in range(thread_num):
             executor.submit(run_browser_operation, result_queue, run_state, blog_url)
         #  启动计数线程
-        executor.submit(count_success_count, result_queue)
+        executor.submit(count_success_count, result_queue, browser_count)
 
