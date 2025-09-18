@@ -1,7 +1,7 @@
 from DrissionPage import ChromiumOptions, Chromium
 from DrissionPage.errors import ElementNotFoundError
 from core.constant import BCP_47_LANGS, CONFIG, PLATFORM
-from core.utils import generate_32bit_integer, get_proxy_info, get_full_path, find_available_port
+from core.utils import generate_32bit_integer, get_proxy_info, get_full_path, find_available_port, is_chrome_debug_ready
 from core.model import Proxy, ProxyRaw, ProxyProtocolEnum
 from abc import ABC, abstractmethod
 from time import sleep
@@ -16,15 +16,14 @@ class BrowserBase(ABC):
         self.browser_pid: int = 0
         self.browser_port: int = 0
         self.data_path: str = ""
+        self.browser: Chromium | None = None
         # 启动浏览器
         self.run_browser(proxy_info=proxy_info)
-        self.browser: Chromium = Chromium(f"127.0.0.1:{self.browser_port}")
         self.tab = self.browser.latest_tab
 
-    def run_browser(self, proxy_info: Proxy):
+    def __init_browser(self, proxy_info: Proxy):
         result = None
         port = find_available_port(8001, 59600)
-        print(f"使用端口：{port}")
         if PLATFORM == "Linux":
             exe_path = CONFIG["browser"]["browser_path_linux_test"]
         elif PLATFORM == "Windows":
@@ -32,7 +31,7 @@ class BrowserBase(ABC):
         else:
             exe_path = CONFIG["browser"]["browser_path"]
 
-        cmd_list= [
+        cmd_list = [
             exe_path,
             f"--remote-debugging-port={port}",
         ]
@@ -55,7 +54,7 @@ class BrowserBase(ABC):
         # 设置允许自动播放
         cmd_list.append("--autoplay-policy=no-user-gesture-required")
         # 设置数据文件夹
-        data_path =  get_full_path(os.path.join("browserDatas", seed))
+        data_path = get_full_path(os.path.join("browserDatas", seed))
         cmd_list.append("--user-data-dir=" + data_path)
         # 设置静音
         cmd_list.append("--mute-audio")
@@ -66,14 +65,29 @@ class BrowserBase(ABC):
         # 默认情况下，https页面不允许从http链接引用javascript / css / plug - ins。添加这一参数会放行这些内容。
         cmd_list.append("--allow-running-insecure-content")
         # 单进程模式
-        cmd_list.append("--single-process")
+        # cmd_list.append("--single-process")
+        #
+        cmd_list.append("--no-default-browser-check")
+        #
+        cmd_list.append("--disable-suggestions-ui")
+        #
+        cmd_list.append("--no-first-run")
+        #
+        cmd_list.append("--disable-infobars")
+        #
+        cmd_list.append("--disable-popup-blocking")
+        #
+        cmd_list.append("--hide-crash-restore-bubble")
+        #
+        cmd_list.append("--disable-features=PrivacySandboxSettings4")
+        # 无头模式
+        cmd_list.append("--headless")
+
         if PLATFORM == "Linux":
             # 无沙盒模式
             cmd_list.append("--no-sandbox")
             # 禁用GPU
             cmd_list.append("--disable-gpu")
-            # 无头模式
-        cmd_list.append("--headless")
 
         try:
             result = subprocess.Popen(
@@ -87,12 +101,24 @@ class BrowserBase(ABC):
             self.browser_pid = result.pid
             self.browser_port = port
             self.data_path = data_path
-            sleep(3)
+            debug_data = is_chrome_debug_ready(port, timeout=15)
+            if debug_data and debug_data[0].get("webSocketDebuggerUrl"):
+                print(f"使用端口：{port}， 启动浏览器成功！")
+                self.browser = Chromium(debug_data[0]["webSocketDebuggerUrl"])
+            else:
+                raise RuntimeError("浏览器启动失败")
         except subprocess.CalledProcessError as e:
             print(f"命令执行失败！返回码: {e.returncode}")
             print("错误信息:", e.stderr)
             if result:
                 result.kill()
+        except Exception as e:
+            print(f"发生错误：{e!r}")
+            if result:
+                result.kill()
+
+    def run_browser(self, proxy_info: Proxy):
+        self.__init_browser(proxy_info=proxy_info)
 
     @abstractmethod
     def startBrowserAds(self) -> bool:
@@ -285,15 +311,17 @@ class BrowserOperation:
 
 if __name__ == "__main__":
     proxy_info = get_proxy_info(
-        ProxyRaw(ip="174.64.199.82", port=4145, protocol=ProxyProtocolEnum.SOCKS5)
+        ProxyRaw(ip="144.202.17.20", port=7298, protocol=ProxyProtocolEnum.SOCKS5)
     )
     print(proxy_info)
     url = "https://t.co/b7Wfiz9nRV"
-    browser = BrowserOperation(proxy_info=proxy_info, play_url=url)
+    blog_url = "https://ssson966.blogspot.com/2025/09/linuxerror-while-loading-shared.html"
+
+    browser = BrowserOperationOnWebtraficRu(proxy_info=proxy_info, play_url=blog_url)
     try:
-        print(browser.browser.tabs_count)
-        browser.play_video()
+        result = browser.startBrowserAds()
+        print(result)
+        browser.browserClose()
     except Exception as e:
         print(e)
-    finally:
-        browser.browser.quit()
+        browser.browserClose()
