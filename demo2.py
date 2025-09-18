@@ -4,6 +4,8 @@ from core.constant import PLATFORM
 from core.utils import get_proxy_raw_by_api
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
+from core.logger import logger
+from traceback import format_exc
 
 
 def run_browser_operation(_result_queue: Queue, _run_state: dict[str, bool], _blog_url: str):
@@ -12,35 +14,41 @@ def run_browser_operation(_result_queue: Queue, _run_state: dict[str, bool], _bl
             break
         proxy_raw = get_proxy_raw_by_api()
         if not proxy_raw:
-            print("没有可用的代理")
+            logger.info("没有可用的代理")
             continue
         proxy_info = get_proxy_info(proxy_raw)
         if not proxy_info:
-            print("代理信息获取失败")
+            logger.info("代理信息获取失败")
             continue
 
-        browser_operation = BrowserOperationOnWebtraficRu(proxy_info=proxy_info, play_url=_blog_url)
+        browser_operation: BrowserOperationOnWebtraficRu | None = None
+
         try:
+            browser_operation = BrowserOperationOnWebtraficRu(proxy_info=proxy_info, play_url=_blog_url)
+            if not browser_operation.browser:
+                logger.info("浏览器启动失败")
+                continue
             result = browser_operation.startBrowserAds()
             _result_queue.put(result)
             browser_operation.browserClose()
         except Exception as e:
-            print(e)
+            logger.error(f"run_browser_operation error: {e!r}\n\n{format_exc()}")
             _result_queue.put(False)
-            browser_operation.browserClose()
+            if browser_operation:
+                browser_operation.browserClose()
 
 
 def count_success_count(_result_queue: Queue, length: int=100):
     success_count = 0
     while True:
         if success_count >= length:
-            print("\n任务完成！")
+            logger.info("任务完成！")
             run_state["state"] = False
             break
         result = _result_queue.get()
         if result:
             success_count += 1
-            print(f"\r成功次数：{success_count}", end="")
+            logger.info(f"成功次数：{success_count}")
 
 
 if __name__ == '__main__':
@@ -51,7 +59,7 @@ if __name__ == '__main__':
         thread_num = 20
     else:
         thread_num = 10
-    browser_count = 10000
+    browser_count = 100
     with ThreadPoolExecutor(max_workers=thread_num + 1) as executor:
         for i in range(thread_num):
             executor.submit(run_browser_operation, result_queue, run_state, blog_url)

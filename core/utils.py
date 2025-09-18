@@ -1,11 +1,15 @@
 import os
 import json
+import shutil
 import httpx
 import socket
 import random
 from time import time
+from pathlib import Path
 from core.model import ProxyRaw, ProxyProtocolEnum, Proxy
 from core.constant import BASE_DIR, CONFIG
+from core.logger import logger
+from traceback import format_exc
 
 
 def generate_32bit_integer() -> int:
@@ -25,7 +29,7 @@ async def get_proxy_info_async(proxy_raw: ProxyRaw) -> Proxy | None:
             proxy_info_dict.update(response.json())
             return Proxy(**proxy_info_dict)
     except Exception as e:
-        print(e)
+        logger.error(f"get_proxy_info_async error: {e!r}\n\n{format_exc()}")
         return  None
 
 
@@ -42,7 +46,7 @@ def get_proxy_info(proxy_raw: ProxyRaw) -> Proxy | None:
             proxy_info_dict["proxy_url"] = proxy_url
             return Proxy(**proxy_info_dict)
     except Exception as e:
-        print(e)
+        logger.error(f"get_proxy_info error: {e!r}\n\n{format_exc()}")
         return  None
 
 def get_full_path(_path: str) -> str:
@@ -77,7 +81,7 @@ def get_proxy_raw_by_api() -> ProxyRaw | None:
             else:
                 return None
     except Exception as e:
-        print(f"获取代理ip失败：{e!r}")
+        logger.warning(f"获取代理ip失败：{e!r}\n\n{format_exc()}")
         return None
 
 
@@ -125,6 +129,28 @@ def is_chrome_debug_ready(port: int, timeout: float = 10.0) -> list[dict] | None
         return None
     except (httpx.RequestError, json.JSONDecodeError):
         return None
+
+
+def delete_all_subdirectories(target_dir):
+    target_path = Path(target_dir)
+
+    if not target_path.exists():
+        logger.warning(f"警告：目录 '{target_dir}' 不存在。")
+        return
+    if not target_path.is_dir():
+        logger.warning(f"警告：'{target_dir}' 不是一个目录。")
+        return
+
+    for subdir in target_path.iterdir():  # 遍历目标目录下的所有条目
+        if subdir.is_dir():  # 筛选目录
+            try:
+                shutil.rmtree(subdir)
+                logger.info(f"成功删除子目录：{subdir}")
+            except PermissionError:
+                logger.warning(f"无权限删除目录：{subdir}")
+            except Exception as e:
+                logger.error(f"删除目录 {subdir} 时发生错误：{e!r}\n\n{format_exc()}")
+
 
 if __name__ == '__main__':
     # print(find_available_port(8001, 59600))
