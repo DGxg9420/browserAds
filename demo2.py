@@ -52,6 +52,7 @@ def count_success_count(_result_queue: Queue, length: int=100):
 
 
 if __name__ == '__main__':
+    import sys
     run_state: dict[str, bool] = {"state": True}
     result_queue: Queue[bool] = Queue()
     blog_url = "https://ssson966.blogspot.com/2025/09/linuxerror-while-loading-shared.html"
@@ -59,7 +60,16 @@ if __name__ == '__main__':
         thread_num = 20
     else:
         thread_num = 10
+
     browser_count = 100
+    # 读取运行时给的参数
+    if len(sys.argv) > 1:
+        browser_count = sys.argv[1]
+        try:
+            browser_count = int(browser_count)
+        except ValueError:
+            logger.error(f"输入参数错误: {browser_count}")
+
     with ThreadPoolExecutor(max_workers=thread_num + 1) as executor:
         for i in range(thread_num):
             executor.submit(run_browser_operation, result_queue, run_state, blog_url)
