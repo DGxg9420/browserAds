@@ -22,7 +22,6 @@ def run_browser_operation(_result_queue: Queue, _run_state: dict[str, bool], _bl
         browser_operation = BrowserOperationOnWebtraficRu(proxy_info=proxy_info, play_url=_blog_url)
         try:
             result = browser_operation.startBrowserAds()
-            print(result)
             _result_queue.put(result)
             browser_operation.browserClose()
         except Exception as e:
