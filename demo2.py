@@ -1,10 +1,10 @@
+from core.logger import logger
 from  core.utils import get_proxy_info
-from core.browserOperation import BrowserOperationOnWebtraficRu
-from core.constant import PLATFORM
 from core.utils import get_proxy_raw_by_api
+from core.constant import PLATFORM
+from core.browserOperation import BrowserOperationOnWebtraficRu
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
-from core.logger import logger
 from traceback import format_exc
 
 

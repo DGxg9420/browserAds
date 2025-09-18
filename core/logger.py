@@ -1,4 +1,4 @@
-from core.utils import get_full_path
+from core.constant import BASE_DIR
 import os
 import sys
 import logging
@@ -18,11 +18,12 @@ def setup_logger(app_name: str = "app"):
     _logger.addHandler(console_handler)
 
     # Create a file handler
-    dir_log = get_full_path("logs")
+    dir_log = os.path.join(BASE_DIR, "logs")
+
     if not os.path.exists(dir_log):
         os.makedirs(dir_log)
 
-    file_handler = RotatingFileHandler(dir_log, maxBytes=1024 * 1024 * 20, backupCount=3, encoding='utf-8', mode="a")
+    file_handler = RotatingFileHandler(os.path.join(dir_log, f"{app_name}.log"), maxBytes=1024 * 1024 * 20, backupCount=3, encoding='utf-8', mode="a")
     file_handler.setLevel(logging.ERROR)
     file_format = logging.Formatter('%(asctime)s - %(name)s:%(lineno)d - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     file_handler.setFormatter(file_format)
