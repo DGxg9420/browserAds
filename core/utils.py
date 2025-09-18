@@ -1,7 +1,9 @@
 import os
+import json
 import httpx
 import socket
 import random
+from time import time
 from core.model import ProxyRaw, ProxyProtocolEnum, Proxy
 from core.constant import BASE_DIR, CONFIG
 
@@ -79,8 +81,54 @@ def get_proxy_raw_by_api() -> ProxyRaw | None:
         return None
 
 
+def is_chrome_debug_ready(port: int, timeout: float = 10.0) -> list[dict] | None:
+    """
+    检测指定端口的 Chrome 远程调试接口是否就绪。
+
+    参数:
+        port (int): Chrome 远程调试端口（如 9222）
+        timeout (float): 总超时时间（秒），默认 10 秒
+
+    返回:
+        bool: 就绪返回 True，否则返回 False
+    """
+    start_time = time()
+
+    # 步骤1：检查端口是否被监听（TCP 握手）
+    while time() - start_time < timeout:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(min(1.0, timeout - (time() - start_time)))  # 单次连接超时不超过剩余时间
+                s.connect(('localhost', port))
+            break  # 端口监听成功，跳出循环
+        except (socket.timeout, ConnectionRefusedError):
+            continue  # 未监听，继续重试
+    else:
+        return None  # 总超时未监听到端口
+
+    # 步骤2：验证远程调试接口是否返回有效数据
+    http_timeout = max(0.0, timeout - (time() - start_time))  # 剩余可用时间
+    if http_timeout <= 0:
+        return None
+
+    debug_url = f'http://localhost:{port}/json/list'
+    try:
+        response = httpx.get(debug_url, timeout=http_timeout)
+        if response.status_code != 200:
+            return None
+
+        # 解析 JSON 并检查是否包含有效调试目标
+        debug_data = response.json()
+        if isinstance(debug_data, list) and len(debug_data) > 0:
+            # 至少有一个目标包含 WebSocket 调试 URL
+            return debug_data
+        return None
+    except (httpx.RequestError, json.JSONDecodeError):
+        return None
+
 if __name__ == '__main__':
-    print(find_available_port(8001, 59600))
+    # print(find_available_port(8001, 59600))
     # dat = get_proxy_raw_by_api()
     # print(dat)
     # print(is_port_available(9876))
+    print(is_chrome_debug_ready(28397, 15))
